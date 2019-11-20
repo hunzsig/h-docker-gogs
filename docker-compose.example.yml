@@ -1,0 +1,43 @@
+version: "3.3"
+
+networks:
+  gitlab:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: ${NETWORK_WEB}
+
+services:
+
+  gitlab-ce:
+    restart: always
+    build: ./images/gitlab-ce
+    ports:
+      - ${PORT_GITLAB_CE}:80
+    volumes:
+      - ${DOCKER_ENV_PWD}/etc/gitlab-ce/data:/var/opt/gitlab
+      - ${DOCKER_ENV_PWD}/etc/gitlab-ce/logs:/var/log/gitlab
+      - ${DOCKER_ENV_PWD}/etc/gitlab-ce/config:/etc/gitlab
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'http://gitlab.hunzsig.org'
+        unicorn['worker_processes'] = 2
+        unicorn['worker_memory_limit_min'] = "100 * 1 << 20"
+        unicorn['worker_memory_limit_max'] = "250 * 1 << 20"
+        postgresql['shared_buffers'] = "64MB"
+        gitlab_rails['gitlab_shell_ssh_port'] = ${PORT_GITLAB_CE}
+        gitlab_rails['time_zone'] = 'Asia/Shanghai'
+        # 需要配置到 gitlab.rb 中的配置可以在这里配置，每个配置一行，注意缩进。
+        # 比如下面的电子邮件的配置：
+        # gitlab_rails['smtp_enable'] = true
+        # gitlab_rails['smtp_address'] = "smtp.exmail.qq.com"
+        # gitlab_rails['smtp_port'] = 465
+        # gitlab_rails['smtp_user_name'] = "xxxx@xx.com"
+        # gitlab_rails['smtp_password'] = "password"
+        # gitlab_rails['smtp_authentication'] = "login"
+        # gitlab_rails['smtp_enable_starttls_auto'] = true
+        # gitlab_rails['smtp_tls'] = true
+        # gitlab_rails['gitlab_email_from'] = 'xxxx@xx.com'
+    networks:
+      gitlab:
+        ipv4_address: ${NETWORK_GITLAB_CE}
