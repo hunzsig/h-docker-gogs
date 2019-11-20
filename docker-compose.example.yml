@@ -1,43 +1,49 @@
 version: "3.3"
 
 networks:
-  gitlab:
+  gogs:
     driver: bridge
     ipam:
       config:
-        - subnet: ${NETWORK_WEB}
+        - subnet: ${NETWORK}
 
 services:
 
-  gitlab-ce:
+  mysql-gogs:
     restart: always
-    build: ./images/gitlab-ce
-    ports:
-      - ${PORT_GITLAB_CE}:80
-    volumes:
-      - ${DOCKER_ENV_PWD}/etc/gitlab-ce/data:/var/opt/gitlab
-      - ${DOCKER_ENV_PWD}/etc/gitlab-ce/logs:/var/log/gitlab
-      - ${DOCKER_ENV_PWD}/etc/gitlab-ce/config:/etc/gitlab
+    build: ./images/mysql
+    container_name: mysql-gogs
+    hostname: mysql-gogs
     environment:
-      GITLAB_OMNIBUS_CONFIG: |
-        external_url 'http://gitlab.hunzsig.org'
-        unicorn['worker_processes'] = 2
-        unicorn['worker_memory_limit_min'] = "100 * 1 << 20"
-        unicorn['worker_memory_limit_max'] = "250 * 1 << 20"
-        postgresql['shared_buffers'] = "64MB"
-        gitlab_rails['gitlab_shell_ssh_port'] = ${PORT_GITLAB_CE}
-        gitlab_rails['time_zone'] = 'Asia/Shanghai'
-        # 需要配置到 gitlab.rb 中的配置可以在这里配置，每个配置一行，注意缩进。
-        # 比如下面的电子邮件的配置：
-        # gitlab_rails['smtp_enable'] = true
-        # gitlab_rails['smtp_address'] = "smtp.exmail.qq.com"
-        # gitlab_rails['smtp_port'] = 465
-        # gitlab_rails['smtp_user_name'] = "xxxx@xx.com"
-        # gitlab_rails['smtp_password'] = "password"
-        # gitlab_rails['smtp_authentication'] = "login"
-        # gitlab_rails['smtp_enable_starttls_auto'] = true
-        # gitlab_rails['smtp_tls'] = true
-        # gitlab_rails['gitlab_email_from'] = 'xxxx@xx.com'
+      - TZ=Asia/Shanghai
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PWD}
+    ports:
+      - ${PORT_MYSQL}:3306
+    expose:
+      - ${PORT_MYSQL}
+    volumes:
+      - ./etc/mysql/data:/var/lib/mysql
+    command: [
+      "--character-set-server=utf8mb4",
+      "--collation-server=utf8mb4_unicode_ci",
+      "--default_authentication_plugin=mysql_native_password",
+    ]
     networks:
-      gitlab:
-        ipv4_address: ${NETWORK_GITLAB_CE}
+      gogs:
+        ipv4_address: ${NETWORK_MYSQL}
+
+  gogs:
+    restart: always
+    build: ./images/gogs
+    depends_on:
+      - mysql-gogs
+    links:
+      - mysql-gogs:mysql
+    ports:
+      - ${PORT_GOGS_SSH}:22
+      - ${PORT_GOGS}:3000
+    volumes:
+      - ./etc/gogs:/data/docker/gogs
+    networks:
+      gogs:
+        ipv4_address: ${NETWORK_GOGS}
