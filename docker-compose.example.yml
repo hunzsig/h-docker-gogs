@@ -43,7 +43,10 @@ services:
       - ${PORT_GOGS_SSH}:22
       - ${PORT_GOGS}:3000
     volumes:
-      - ./etc/gogs:/data
+      - gogs_data:/data
     networks:
       gogs:
         ipv4_address: ${NETWORK_GOGS}
+
+volumes:
+  gogs_data:
